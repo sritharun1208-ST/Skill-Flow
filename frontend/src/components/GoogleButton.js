@@ -1,12 +1,16 @@
 import React from "react";
-import { toast } from "sonner";
 
 export default function GoogleButton({ label = "Continue with Google" }) {
+  const handleClick = () => {
+    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    const redirectUrl = window.location.origin + "/app/dashboard";
+    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  };
   return (
     <button
       type="button"
       data-testid="google-signin-btn"
-      onClick={() => toast.info("Google Sign-In is a UI demo in this build. Use email/password to continue.")}
+      onClick={handleClick}
       className="w-full h-12 rounded-xl border border-gray-200 bg-white flex items-center justify-center gap-3 font-medium text-[#111827] hover:bg-gray-50 transition-colors"
     >
       <svg width="18" height="18" viewBox="0 0 48 48">

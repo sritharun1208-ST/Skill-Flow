@@ -9,13 +9,15 @@ import { api, formatApiError } from "@/lib/apiClient";
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [resetToken, setResetToken] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/auth/forgot-password", { email });
+      const { data } = await api.post("/auth/forgot-password", { email });
+      setResetToken(data.token || null);
       setSent(true);
       toast.success("If that email exists, a reset link has been sent.");
     } catch (err) {
@@ -32,8 +34,13 @@ export default function ForgotPassword() {
       footer={<Link to="/login" className="inline-flex items-center gap-1.5 text-[#FF6B00] font-semibold" data-testid="back-to-login"><ArrowLeft className="h-4 w-4" /> Back to login</Link>}
     >
       {sent ? (
-        <div data-testid="forgot-success" className="rounded-xl bg-emerald-50 border border-emerald-200 p-5 text-emerald-800 text-sm">
-          Check your inbox! If an account exists for <b>{email}</b>, a password reset link is on its way. (In this demo, the link is logged to the server console.)
+        <div data-testid="forgot-success" className="rounded-xl bg-emerald-50 border border-emerald-200 p-5 text-emerald-800 text-sm space-y-3">
+          <p>Check your inbox! If an account exists for <b>{email}</b>, a password reset link is on its way.</p>
+          {resetToken && (
+            <p className="text-emerald-900">
+              Demo mode: <Link to={`/reset-password?token=${resetToken}`} data-testid="demo-reset-link" className="underline font-semibold">open your reset page →</Link>
+            </p>
+          )}
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4" data-testid="forgot-form">

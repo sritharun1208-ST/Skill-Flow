@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowRight, ArrowLeft, Plus, X, Check, GraduationCap, Target, Zap, Award, Flag } from "lucide-react";
+import { ArrowRight, ArrowLeft, Plus, X, Check, GraduationCap, Target, Zap, Award, Flag, Upload, Loader2 } from "lucide-react";
 import Logo from "@/components/Logo";
-import { api } from "@/lib/apiClient";
+import { api, uploadFile } from "@/lib/apiClient";
 import { useAuth } from "@/context/AuthContext";
 
 const GOALS = ["Get an internship", "Get a job", "Build projects", "Improve technical skills", "Prepare for placements", "Explore career options"];
@@ -32,8 +32,45 @@ export default function Onboarding() {
   const [skillLevel, setSkillLevel] = useState("Beginner");
   const [experience, setExperience] = useState({ projects: [], internships: [], certifications: [], hackathons: [], work: [] });
   const [goal, setGoal] = useState("");
+  const [parsing, setParsing] = useState(false);
 
   useEffect(() => { api.get("/careers").then((r) => setCareers(r.data)).catch(() => {}); }, []);
+
+  const onResume = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setParsing(true);
+    try {
+      const { data } = await uploadFile("/resume/parse", file);
+      if (Array.isArray(data.skills) && data.skills.length) {
+        setSkills(data.skills.map((s) => ({ name: s.name, level: (s.level || "intermediate").toLowerCase() })));
+      }
+      if (data.experience) {
+        setExperience((prev) => ({
+          projects: data.experience.projects || prev.projects,
+          internships: data.experience.internships || prev.internships,
+          certifications: data.experience.certifications || prev.certifications,
+          hackathons: data.experience.hackathons || prev.hackathons,
+          work: data.experience.work || prev.work,
+        }));
+      }
+      if (data.profile) {
+        setProfile((prev) => ({
+          ...prev,
+          college: data.profile.college || prev.college,
+          degree: data.profile.degree || prev.degree,
+          branch: data.profile.branch || prev.branch,
+          graduationYear: data.profile.graduationYear || prev.graduationYear,
+        }));
+      }
+      toast.success("Resume imported! Review and edit the details as you go.");
+    } catch (err) {
+      toast.error("Couldn't read that resume. Try a PDF, DOCX or TXT file.");
+    } finally {
+      setParsing(false);
+    }
+  };
 
   const addSkill = () => {
     if (!skillName.trim()) return;
@@ -92,14 +129,27 @@ export default function Onboarding() {
           <AnimatePresence mode="wait">
             <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
               {step === 0 && (
-                <div className="grid sm:grid-cols-2 gap-4" data-testid="onboarding-step-profile">
-                  <Input label="Name" value={profile.name} onChange={(v) => setProfile({ ...profile, name: v })} testId="ob-name" />
-                  <Input label="Education (e.g. B.Tech)" value={profile.education} onChange={(v) => setProfile({ ...profile, education: v })} testId="ob-education" />
-                  <Input label="College" value={profile.college} onChange={(v) => setProfile({ ...profile, college: v })} testId="ob-college" />
-                  <Input label="Degree" value={profile.degree} onChange={(v) => setProfile({ ...profile, degree: v })} testId="ob-degree" />
-                  <Input label="Branch" value={profile.branch} onChange={(v) => setProfile({ ...profile, branch: v })} testId="ob-branch" />
-                  <Input label="Current Year / Semester" value={profile.year} onChange={(v) => setProfile({ ...profile, year: v })} testId="ob-year" />
-                  <Input label="Graduation Year" value={profile.graduationYear} onChange={(v) => setProfile({ ...profile, graduationYear: v })} testId="ob-gradyear" />
+                <div data-testid="onboarding-step-profile">
+                  <label className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border-2 border-dashed border-orange-200 bg-orange-50 mb-5 cursor-pointer hover:border-[#FF6B00] transition-colors" data-testid="resume-import-card">
+                    <div className="h-11 w-11 rounded-xl bg-[#FF6B00] text-white flex items-center justify-center shrink-0">
+                      {parsing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold font-heading text-[#111827]">{parsing ? "Reading your resume…" : "Import from resume"}</p>
+                      <p className="text-xs text-[#6B7280]">Upload a PDF, DOCX or TXT and we'll auto-fill your skills & experience.</p>
+                    </div>
+                    <span className="text-sm font-semibold text-[#FF6B00] shrink-0">Choose file</span>
+                    <input type="file" accept=".pdf,.docx,.txt" onChange={onResume} disabled={parsing} className="hidden" data-testid="resume-input" />
+                  </label>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <Input label="Name" value={profile.name} onChange={(v) => setProfile({ ...profile, name: v })} testId="ob-name" />
+                    <Input label="Education (e.g. B.Tech)" value={profile.education} onChange={(v) => setProfile({ ...profile, education: v })} testId="ob-education" />
+                    <Input label="College" value={profile.college} onChange={(v) => setProfile({ ...profile, college: v })} testId="ob-college" />
+                    <Input label="Degree" value={profile.degree} onChange={(v) => setProfile({ ...profile, degree: v })} testId="ob-degree" />
+                    <Input label="Branch" value={profile.branch} onChange={(v) => setProfile({ ...profile, branch: v })} testId="ob-branch" />
+                    <Input label="Current Year / Semester" value={profile.year} onChange={(v) => setProfile({ ...profile, year: v })} testId="ob-year" />
+                    <Input label="Graduation Year" value={profile.graduationYear} onChange={(v) => setProfile({ ...profile, graduationYear: v })} testId="ob-gradyear" />
+                  </div>
                 </div>
               )}
 

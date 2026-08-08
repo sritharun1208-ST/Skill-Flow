@@ -1,8 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Briefcase, MapPin, CalendarClock, Check, AlertTriangle, X, Bookmark } from "lucide-react";
+import { Briefcase, MapPin, CalendarClock, Check, AlertTriangle, X, Bookmark, MessagesSquare } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import PageHeader from "@/components/PageHeader";
 
@@ -17,6 +18,7 @@ function matchColor(m) {
 
 export default function Opportunities() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { data, isLoading } = useQuery({ queryKey: ["opportunities"], queryFn: () => api.get("/opportunities").then((r) => r.data) });
   const [type, setType] = useState("All");
   const [mode, setMode] = useState("All");
@@ -75,9 +77,14 @@ export default function Opportunities() {
                 <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {o.location}</span>
                 <span className="inline-flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" /> {o.deadline}</span>
               </div>
-              <button data-testid={`save-opp-${o.id}`} onClick={() => save(o)} className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl bg-[#FF6B00] text-white text-sm font-semibold hover:bg-[#e85f00] transition-colors">
-                <Bookmark className="h-3.5 w-3.5" /> Apply / Save
-              </button>
+              <div className="flex items-center gap-2">
+                <button data-testid={`practice-opp-${o.id}`} onClick={() => navigate(`/app/interview?opp=${o.id}`)} className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-gray-200 text-sm font-medium text-[#111827] hover:border-orange-200 hover:text-[#FF6B00] transition-colors">
+                  <MessagesSquare className="h-3.5 w-3.5" /> Practice
+                </button>
+                <button data-testid={`save-opp-${o.id}`} onClick={() => save(o)} className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl bg-[#FF6B00] text-white text-sm font-semibold hover:bg-[#e85f00] transition-colors">
+                  <Bookmark className="h-3.5 w-3.5" /> Apply / Save
+                </button>
+              </div>
             </div>
           </motion.div>
         ))}

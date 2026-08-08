@@ -5,7 +5,7 @@ import os
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -18,6 +18,9 @@ import uuid
 import secrets
 import bcrypt
 import jwt
+import io
+import json
+import requests as httpreq
 
 import data as catalog
 
@@ -172,6 +175,17 @@ class ApplicationUpdate(BaseModel):
 class ChatIn(BaseModel):
     message: str
     session_id: Optional[str] = None
+
+
+class GoogleAuthIn(BaseModel):
+    session_id: str
+
+
+class InterviewIn(BaseModel):
+    message: str
+    session_id: Optional[str] = None
+    opportunityId: Optional[str] = None
+    careerId: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -372,6 +386,43 @@ async def logout(response: Response):
     return {"ok": True}
 
 
+@api.post("/auth/google")
+async def google_auth(body: GoogleAuthIn, response: Response):
+    # REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    try:
+        r = httpreq.get(
+            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": body.session_id}, timeout=15)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Auth service unreachable")
+    if r.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid or expired Google session")
+    info = r.json()
+    email = (info.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="No email returned from Google")
+    user = await db.users.find_one({"email": email})
+    if not user:
+        doc = {
+            "name": info.get("name") or email.split("@")[0],
+            "email": email,
+            "password_hash": None,
+            "auth_provider": "google",
+            "role": "student",
+            "onboarded": False,
+            "profile": {"name": info.get("name") or "", "photo": info.get("picture") or ""},
+            "targetCareer": None, "goal": None, "skills": [],
+            "experience": {"projects": [], "internships": [], "certifications": [], "hackathons": [], "work": []},
+            "learningProgress": {}, "savedProjects": [], "proofs": [],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        res = await db.users.insert_one(doc)
+        doc["_id"] = res.inserted_id
+        user = doc
+    token = set_auth_cookies(response, str(user["_id"]), email)
+    return {**serialize_user(user), "token": token}
+
+
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
     return serialize_user(user)
@@ -406,6 +457,7 @@ async def forgot_password(body: ForgotIn):
             "used": False,
         })
         logger.info(f"[Skill Flow] Password reset link: /reset-password?token={token}")
+        return {"ok": True, "message": "If that email exists, a reset link has been sent.", "token": token}
     return {"ok": True, "message": "If that email exists, a reset link has been sent."}
 
 
@@ -787,6 +839,110 @@ async def ai_chat(body: ChatIn, request: Request, user: dict = Depends(get_curre
 
     return StreamingResponse(event_generator(), media_type="text/plain",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+async def _stream_response(system_message, session_id, message, user_id, kind):
+    async def gen():
+        full = ""
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+            chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id,
+                           system_message=system_message).with_model("anthropic", "claude-sonnet-4-6")
+            async for event in chat.stream_message(UserMessage(text=message)):
+                if isinstance(event, TextDelta):
+                    full += event.content
+                    yield event.content
+                elif isinstance(event, StreamDone):
+                    break
+        except Exception as e:
+            logger.error(f"AI {kind} error: {e}")
+            full = "I'm having trouble reaching the AI service right now. Please try again in a moment."
+            yield full
+        await db.chat_messages.insert_one({
+            "user_id": user_id, "session_id": session_id, "role": "assistant",
+            "kind": kind, "content": full, "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    return StreamingResponse(gen(), media_type="text/plain",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@api.post("/ai/interview")
+async def ai_interview(body: InterviewIn, user: dict = Depends(get_current_user)):
+    session_id = body.session_id or str(uuid.uuid4())
+    role, company, skills = "your target role", "a company", []
+    if body.opportunityId:
+        opp = next((o for o in catalog.OPPORTUNITIES if o["id"] == body.opportunityId), None)
+        if opp:
+            role, company = opp["role"], opp["company"]
+            skills = [s["name"] for s in opp["required_skills"]]
+    if not skills:
+        career = catalog.CAREER_BY_ID.get(body.careerId or user.get("targetCareer"))
+        if career:
+            role = career["name"]
+            skills = [s["name"] for s in career["required_skills"]]
+    context = build_ai_context(user)
+    system_message = (
+        f"You are a friendly but rigorous technical interviewer conducting a mock interview for the role of "
+        f"{role} at {company}. Focus your questions on these required skills: {', '.join(skills)}. "
+        "Rules: Ask ONE question at a time. When the student answers, give short constructive feedback, "
+        "a score out of 10 for that answer, then ask the next question. Keep each turn under 160 words. "
+        "If the student's message is 'START', begin with a brief welcome and your first question. "
+        "Adapt difficulty to the student's real level.\n\n"
+        f"STUDENT DATA: {context}"
+    )
+    await db.chat_messages.insert_one({
+        "user_id": str(user["_id"]), "session_id": session_id, "role": "user",
+        "kind": "interview", "content": body.message, "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return await _stream_response(system_message, session_id, body.message, str(user["_id"]), "interview")
+
+
+@api.post("/resume/parse")
+async def parse_resume(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    content = await file.read()
+    fname = (file.filename or "").lower()
+    text = ""
+    try:
+        if fname.endswith(".pdf"):
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(content))
+            text = "\n".join((p.extract_text() or "") for p in reader.pages)
+        elif fname.endswith(".docx"):
+            import docx
+            d = docx.Document(io.BytesIO(content))
+            text = "\n".join(p.text for p in d.paragraphs)
+        else:
+            text = content.decode("utf-8", errors="ignore")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read the file: {e}")
+    text = (text or "").strip()[:8000]
+    if len(text) < 20:
+        raise HTTPException(status_code=400, detail="Couldn't extract readable text from this file.")
+    system = "You extract structured data from resumes. Respond with ONLY valid minified JSON, no prose, no code fences."
+    prompt = (
+        'From the resume text below, extract JSON with EXACTLY these keys: '
+        '"skills": array of objects {"name": string, "level": one of "beginner"|"intermediate"|"advanced"} (infer level, default "intermediate"), '
+        '"experience": {"projects": string[], "internships": string[], "certifications": string[], "hackathons": string[], "work": string[]}, '
+        '"profile": {"college": string, "degree": string, "branch": string, "graduationYear": string, "github": string, "portfolio": string}. '
+        'Only include items present in the resume. Keep skills to the 12 most relevant.\n\nRESUME:\n' + text
+    )
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=str(uuid.uuid4()),
+                       system_message=system).with_model("anthropic", "claude-sonnet-4-6")
+        raw = await chat.send_message(UserMessage(text=prompt))
+        raw = raw if isinstance(raw, str) else str(raw)
+        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        start, end = raw.find("{"), raw.rfind("}")
+        data = json.loads(raw[start:end + 1])
+    except Exception as e:
+        logger.error(f"Resume parse error: {e}")
+        raise HTTPException(status_code=502, detail="Could not analyze the resume. Please try again.")
+    return {
+        "skills": data.get("skills", []),
+        "experience": data.get("experience", {}),
+        "profile": data.get("profile", {}),
+    }
 
 
 @api.get("/ai/history")

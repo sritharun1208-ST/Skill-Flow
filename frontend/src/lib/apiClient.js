@@ -41,6 +41,22 @@ export const api = {
   delete: (path) => request("DELETE", path),
 };
 
+export async function uploadFile(path, file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  const token = localStorage.getItem(TOKEN_KEY);
+  const res = await fetch(`${API}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  });
+  let data = null;
+  const text = await res.text();
+  if (text) { try { data = JSON.parse(text); } catch (e) { data = text; } }
+  if (!res.ok) throw new ApiError(res.status, data);
+  return { data, status: res.status };
+}
+
 export function formatApiError(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
   if (typeof detail === "string") return detail;

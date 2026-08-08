@@ -1,14 +1,16 @@
 import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Layout from "@/components/Layout";
+import AuthCallback from "@/components/AuthCallback";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Onboarding from "@/pages/Onboarding";
 import Dashboard from "@/pages/Dashboard";
 import MySkills from "@/pages/MySkills";
@@ -20,6 +22,7 @@ import Applications from "@/pages/Applications";
 import CareerExplorer from "@/pages/CareerExplorer";
 import Progress from "@/pages/Progress";
 import Profile from "@/pages/Profile";
+import Interview from "@/pages/Interview";
 
 function Loader() {
   return (
@@ -45,32 +48,44 @@ function PublicOnly({ children }) {
   return children;
 }
 
+function AppRoutes() {
+  const location = useLocation();
+  if (location.hash && location.hash.includes("session_id=")) {
+    return <AuthCallback />;
+  }
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
+      <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/onboarding" element={<Protected requireOnboarded={false}><Onboarding /></Protected>} />
+      <Route path="/app" element={<Protected><Layout /></Protected>}>
+        <Route index element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="skills" element={<MySkills />} />
+        <Route path="skill-gap" element={<SkillGap />} />
+        <Route path="learning-path" element={<LearningPath />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="opportunities" element={<Opportunities />} />
+        <Route path="applications" element={<Applications />} />
+        <Route path="careers" element={<CareerExplorer />} />
+        <Route path="interview" element={<Interview />} />
+        <Route path="progress" element={<Progress />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   return (
     <div className="App">
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
-            <Route path="/register" element={<PublicOnly><Register /></PublicOnly>} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/onboarding" element={<Protected requireOnboarded={false}><Onboarding /></Protected>} />
-            <Route path="/app" element={<Protected><Layout /></Protected>}>
-              <Route index element={<Navigate to="/app/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="skills" element={<MySkills />} />
-              <Route path="skill-gap" element={<SkillGap />} />
-              <Route path="learning-path" element={<LearningPath />} />
-              <Route path="projects" element={<Projects />} />
-              <Route path="opportunities" element={<Opportunities />} />
-              <Route path="applications" element={<Applications />} />
-              <Route path="careers" element={<CareerExplorer />} />
-              <Route path="progress" element={<Progress />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AppRoutes />
         </BrowserRouter>
         <Toaster position="top-right" richColors />
       </AuthProvider>

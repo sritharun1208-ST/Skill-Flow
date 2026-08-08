@@ -21,6 +21,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash && window.location.hash.includes("session_id=")) {
+      // Returning from Google OAuth — let AuthCallback exchange the session first.
+      setLoading(false);
+      return;
+    }
     refreshUser();
   }, [refreshUser]);
 
@@ -44,8 +49,15 @@ export function AuthProvider({ children }) {
     setUser(false);
   };
 
+  const loginWithGoogle = async (session_id) => {
+    const { data } = await api.post("/auth/google", { session_id });
+    if (data.token) setToken(data.token);
+    setUser(data);
+    return data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, register, logout, loginWithGoogle, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

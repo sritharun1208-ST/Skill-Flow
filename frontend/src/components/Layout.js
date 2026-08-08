@@ -3,7 +3,7 @@ import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Target, GitCompareArrows, Route, FolderGit2, Briefcase,
-  KanbanSquare, Compass, TrendingUp, User, LogOut, Menu, X, Zap,
+  KanbanSquare, Compass, TrendingUp, User, LogOut, Menu, X, Zap, MessagesSquare,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import AIAssistant from "@/components/AIAssistant";
@@ -17,12 +17,13 @@ const NAV = [
   { to: "/app/projects", label: "Projects", icon: FolderGit2 },
   { to: "/app/opportunities", label: "Opportunities", icon: Briefcase },
   { to: "/app/applications", label: "Applications", icon: KanbanSquare },
+  { to: "/app/interview", label: "Interview Prep", icon: MessagesSquare },
   { to: "/app/careers", label: "Career Explorer", icon: Compass },
   { to: "/app/progress", label: "My Progress", icon: TrendingUp },
   { to: "/app/profile", label: "Profile", icon: User },
 ];
 
-const BOTTOM = [NAV[0], NAV[2], NAV[3], NAV[5], NAV[9]];
+const BOTTOM = [NAV[0], NAV[2], NAV[3], NAV[5], NAV[10]];
 
 function NavItem({ item, onClick }) {
   const Icon = item.icon;
