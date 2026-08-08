@@ -929,6 +929,8 @@ async def _llm_json(system: str, prompt: str, error_label: str) -> dict:
         raw = raw if isinstance(raw, str) else str(raw)
         raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         start, end = raw.find("{"), raw.rfind("}")
+        if start == -1 or end == -1 or end < start:
+            raise ValueError("No JSON object found in model response")
         return json.loads(raw[start:end + 1])
     except Exception as e:
         logger.error(f"{error_label}: {e}")
@@ -958,7 +960,7 @@ async def parse_resume(file: UploadFile = File(...), user: dict = Depends(get_cu
 async def score_resume(file: UploadFile = File(...), careerId: Optional[str] = None, user: dict = Depends(get_current_user)):
     text = await _extract_resume_text(file)
     career = catalog.CAREER_BY_ID.get(careerId or user.get("targetCareer"))
-    role_name = career["name"] if career else (careerId or "the target role")
+    role_name = career["name"] if career else "the target role"
     req_skills = ", ".join([f"{s['name']} ({s['level']})" for s in career["required_skills"]]) if career else "general skills for the role"
     techs = ", ".join(career["technologies"]) if career else ""
     system = "You are an expert technical recruiter and resume reviewer. Respond with ONLY valid minified JSON, no prose, no code fences."

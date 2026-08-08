@@ -32,7 +32,7 @@ export default function ResumeScore() {
       setResult(data);
       toast.success("Resume scored!");
     } catch (err) {
-      toast.error("Couldn't score that resume. Try a PDF, DOCX or TXT file.");
+      toast.error(err.response?.data?.detail || "Couldn't score that resume. Try a PDF, DOCX or TXT file.");
     } finally {
       setLoading(false);
     }

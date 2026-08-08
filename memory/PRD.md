@@ -30,6 +30,9 @@ Landing, Auth (login/register/forgot), Onboarding wizard (5 steps), Dashboard (c
 - Full frontend: Landing, Login/Register/Forgot, Onboarding wizard, Dashboard, My Skills, Skill Gap (radar + table + categories), Learning Path (timeline + resources), Projects, Opportunities, Applications (Kanban drag + modal), Career Explorer (+ comparison + detail modal), Progress (area + bar charts), Profile (overview + proof + edit + portfolio), floating AI assistant.
 - Testing: testing agent iteration_1 — 21/21 backend pass, all critical frontend flows pass, real Claude AI streaming verified.
 
+## Added 2026-06-08 (iteration 3)
+- **Resume Score** (`/app/resume-score`): upload a resume (PDF/DOCX/TXT) and get an AI score (Claude) against the selected target role — overall fit %, 6-category breakdown, strengths, matched/missing skills, ATS keywords, and numbered concrete fixes (`POST /api/resume/score?careerId=`). Verified: testing agent iteration_3 — 9/9 backend + full UI pass, role-specific output.
+
 ## Backlog / Remaining (P1/P2)
 - P2: Persist AI chat history across sessions in the UI.
 - P2: Drag-and-drop polish on mobile Kanban; deadline reminders.
