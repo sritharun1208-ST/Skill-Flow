@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 3 focused on the new Resume Score feature + regression. Backend: 9/9 tests pass (test_new_features.py::TestResumeScore + TestRegression + TestResumeParse). Frontend UI: Resume Score end-to-end works — sidebar nav-resume-score routes to /app/resume-score, target-role dropdown defaults to software-developer, uploading a .txt resume triggers POST /api/resume/score, and the page renders resume-overall (circular progress, e.g. '30% fit for Software Developer'), 6-category score breakdown with animated bars, 5 strengths items, matched/missing skills chips, resume-improvements section with 6 numbered concrete fixes (e.g. 'Expand Internship Description with Measurable Impact'), and a 'Resume scored!' toast. Career-specific scoring verified: careerId=data-analyst returned role='Data Analyst', overall=28, and missing skills Excel/Power BI/Tableau tailored to that role. Regression: /api/resume/parse still returns real Claude JSON; demo login + dashboard still load.",
+  "ai_feature_verdicts": [
+    "Resume Score (Claude claude-sonnet-4-6, /api/resume/score) - pass - PRIMARY. Evidence: 200 OK, overall=28 int in [0-100], verdict='Strong software engineering profile but critically misaligned with Data Analyst requirements — missing Excel, Power BI, Statistics, and any data-focused experience.', breakdown=6 categories ['Skills Match','Relevant Experience','Projects','Education','Formatting & Clarity','Keywords / ATS'] with scores [22,15,12,55,30,20], missingSkills=['Excel (advanced)','Power BI (intermediate)','Data Visualization (intermediate)','Statistics (intermediate)'], missingKeywords=['data analysis','Excel','Power BI','Tableau','dashboard'], improvements=6 items with real actionable titles+details tailored to Data Analyst role. Same probe with software-developer role returned different, SDE-tailored missing skills ['Data Structures & Algorithms','Problem Solving','OOP']. Output is role-specific real Claude content, not a canned fallback. skill: ai-testing-llm",
+    "Resume Parse (Claude, /api/resume/parse) - pass (regression). test_resume_parse_txt_returns_real_skills asserts 'python' in extracted skills; still working.",
+    "AI Chat / Interview - not-in-scope-this-iteration (no code changes; iteration_2 verdict retained)."
+  ],
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/iteration_3_resume_score.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py::score_resume: `careerId` is a query param and completely trusted from the client — if it points to a bogus id the code falls back to user's targetCareer, which is fine, but the `role_name` uses `careerId or 'the target role'` for unknown ids, which could leak the raw slug ('data-analystXYZ') into the LLM prompt. Consider validating against CAREER_BY_ID and 400ing on unknown careerId, or explicitly ignoring unknown values.",
+    "server.py::_extract_resume_text: pypdf and docx are still imported inside the handler (per-request cost, deferred failure). Same comment as iteration_2 — move to module level.",
+    "server.py::_llm_json: raw[start:end+1] assumes both braces exist; a malformed LLM response with no '}' will crash with a slice error (rfind returning -1 makes it raw[start:0]). Catch this explicitly and raise 502 with a friendly message.",
+    "ResumeScore.js: file input has `disabled={loading}` but the outer label is still clickable during loading — a fast double-click can still fire the change handler once loading flips false and a new click happens. Consider disabling the whole label / adding pointer-events-none on the label while loading.",
+    "ResumeScore.js: uploadFile catches all errors as a generic toast 'Couldn't score that resume. Try a PDF, DOCX or TXT file.' — even server 502 from Claude shows the same message; surface err.response?.data?.detail for better UX.",
+    "ResumeScore.js: no accessible file name label after successful score — nice to keep the uploaded filename visible in the result panel (currently only shown in the upload card, which is overwritten on next upload)."
+  ],
+  "updated_files": ["/app/backend/tests/test_new_features.py"],
+  "success_rate": {"backend": "100% (9/9 relevant tests: TestResumeScore 4/4, TestResumeParse 3/3, TestRegression 2/2)", "frontend": "100% (Resume Score end-to-end + regression to dashboard)"},
+  "test_credentials": "arjun@skillflow.com / skillflow123 (demo, VERIFIED WORKING); admin@skillflow.com / admin123.",
+  "seed_data_creation": "Registered 1 throwaway test_reset_* account during password-reset regression class (module-scope fixture inherited from iteration_2 file). No modifications to demo profile.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Skills loaded: ai-testing-core, ai-testing-llm. All Claude LLM calls (resume/score, resume/parse, ai/chat, ai/interview) use EMERGENT_LLM_KEY via emergentintegrations with model claude-sonnet-4-6. When calling /api/resume/score, the frontend uses uploadFile() which sends FormData with Bearer token from localStorage 'sf_token'. The response contract is: {role, overall:int, verdict:str, breakdown:[{category,score}]*6, matchedSkills[], missingSkills[], missingKeywords[], strengths[], improvements:[{title,detail}]}. The CircularProgress animates the number, so text_content read too early may show a partial value — the settled value is correct.",
+  "rca of the issue": "No issues found. Feature works as specified."
+}

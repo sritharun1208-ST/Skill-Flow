@@ -176,6 +176,91 @@ class TestResumeParse:
         assert r.status_code == 400
 
 
+# ---------- Resume Score (iteration_3 new feature) ----------
+class TestResumeScore:
+    def test_resume_score_requires_auth(self):
+        files = {"file": ("resume.txt", RESUME_TXT.encode("utf-8"), "text/plain")}
+        r = requests.post(f"{API}/resume/score", files=files, timeout=60)
+        assert r.status_code == 401
+
+    def test_resume_score_default_career(self, demo_client):
+        """POST /api/resume/score with a .txt resume (no careerId) → uses user's targetCareer."""
+        s = requests.Session()
+        s.headers.update({"Authorization": demo_client.headers["Authorization"]})
+        files = {"file": ("resume.txt", RESUME_TXT.encode("utf-8"), "text/plain")}
+        r = s.post(f"{API}/resume/score", files=files, timeout=120)
+        assert r.status_code == 200, f"{r.status_code} {r.text}"
+        data = r.json()
+        # required keys
+        for k in ["overall", "verdict", "breakdown", "matchedSkills", "missingSkills",
+                  "missingKeywords", "strengths", "improvements", "role"]:
+            assert k in data, f"missing key {k} in response: {list(data.keys())}"
+        # types & ranges
+        assert isinstance(data["overall"], int), f"overall not int: {type(data['overall'])}"
+        assert 0 <= data["overall"] <= 100, f"overall out of range: {data['overall']}"
+        assert isinstance(data["verdict"], str) and len(data["verdict"]) > 0
+        assert isinstance(data["breakdown"], list) and len(data["breakdown"]) == 6, \
+            f"expected 6 breakdown categories, got {len(data['breakdown'])}"
+        # each breakdown item has category+score
+        for b in data["breakdown"]:
+            assert "category" in b and "score" in b
+            assert isinstance(b["score"], int) and 0 <= b["score"] <= 100
+        # matched/missing skills are lists of strings
+        assert isinstance(data["matchedSkills"], list)
+        assert isinstance(data["missingSkills"], list)
+        assert isinstance(data["missingKeywords"], list)
+        assert isinstance(data["strengths"], list) and len(data["strengths"]) >= 1
+        # improvements: list of {title, detail}
+        assert isinstance(data["improvements"], list) and len(data["improvements"]) >= 1
+        for imp in data["improvements"]:
+            assert "title" in imp and "detail" in imp
+            assert isinstance(imp["title"], str) and len(imp["title"]) > 0
+            assert isinstance(imp["detail"], str) and len(imp["detail"]) > 0
+        # role name should be the demo user's targetCareer ("software-developer" -> "Software Developer")
+        assert isinstance(data["role"], str) and len(data["role"]) > 0
+        print(f"[resume/score default] overall={data['overall']} role={data['role']!r} "
+              f"strengths={len(data['strengths'])} improvements={len(data['improvements'])}")
+
+    def test_resume_score_with_careerId(self, demo_client):
+        """POST /api/resume/score?careerId=data-analyst returns tailored JSON."""
+        s = requests.Session()
+        s.headers.update({"Authorization": demo_client.headers["Authorization"]})
+        files = {"file": ("resume.txt", RESUME_TXT.encode("utf-8"), "text/plain")}
+        r = s.post(f"{API}/resume/score?careerId=data-analyst", files=files, timeout=120)
+        assert r.status_code == 200, f"{r.status_code} {r.text}"
+        data = r.json()
+        assert "overall" in data and isinstance(data["overall"], int)
+        assert "improvements" in data and len(data["improvements"]) >= 1
+        assert "breakdown" in data and len(data["breakdown"]) == 6
+        # role should reflect the chosen careerId, not the user's default
+        assert "data" in data["role"].lower() or "analyst" in data["role"].lower(), \
+            f"role should be data-analyst related, got: {data['role']!r}"
+        print(f"[resume/score data-analyst] overall={data['overall']} role={data['role']!r}")
+
+    def test_resume_score_rejects_empty(self, demo_client):
+        s = requests.Session()
+        s.headers.update({"Authorization": demo_client.headers["Authorization"]})
+        files = {"file": ("empty.txt", b"", "text/plain")}
+        r = s.post(f"{API}/resume/score", files=files, timeout=30)
+        assert r.status_code == 400
+
+
+# ---------- Regression quick-check ----------
+class TestRegression:
+    def test_demo_login(self):
+        r = requests.post(f"{API}/auth/login",
+                          json={"email": DEMO_EMAIL, "password": DEMO_PW}, timeout=15)
+        assert r.status_code == 200
+        assert "token" in r.json()
+
+    def test_dashboard_loads(self, demo_client):
+        r = demo_client.get(f"{API}/dashboard", timeout=15)
+        assert r.status_code == 200
+        data = r.json()
+        for k in ["readiness", "skills", "learning", "targetCareer"]:
+            assert k in data
+
+
 # ---------- AI Interview streaming ----------
 class TestInterview:
     def test_interview_start_streams(self, demo_client):

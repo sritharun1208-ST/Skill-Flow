@@ -897,8 +897,7 @@ async def ai_interview(body: InterviewIn, user: dict = Depends(get_current_user)
     return await _stream_response(system_message, session_id, body.message, str(user["_id"]), "interview")
 
 
-@api.post("/resume/parse")
-async def parse_resume(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+async def _extract_resume_text(file: UploadFile) -> str:
     content = await file.read()
     fname = (file.filename or "").lower()
     text = ""
@@ -918,14 +917,10 @@ async def parse_resume(file: UploadFile = File(...), user: dict = Depends(get_cu
     text = (text or "").strip()[:8000]
     if len(text) < 20:
         raise HTTPException(status_code=400, detail="Couldn't extract readable text from this file.")
-    system = "You extract structured data from resumes. Respond with ONLY valid minified JSON, no prose, no code fences."
-    prompt = (
-        'From the resume text below, extract JSON with EXACTLY these keys: '
-        '"skills": array of objects {"name": string, "level": one of "beginner"|"intermediate"|"advanced"} (infer level, default "intermediate"), '
-        '"experience": {"projects": string[], "internships": string[], "certifications": string[], "hackathons": string[], "work": string[]}, '
-        '"profile": {"college": string, "degree": string, "branch": string, "graduationYear": string, "github": string, "portfolio": string}. '
-        'Only include items present in the resume. Keep skills to the 12 most relevant.\n\nRESUME:\n' + text
-    )
+    return text
+
+
+async def _llm_json(system: str, prompt: str, error_label: str) -> dict:
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=str(uuid.uuid4()),
@@ -934,14 +929,65 @@ async def parse_resume(file: UploadFile = File(...), user: dict = Depends(get_cu
         raw = raw if isinstance(raw, str) else str(raw)
         raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         start, end = raw.find("{"), raw.rfind("}")
-        data = json.loads(raw[start:end + 1])
+        return json.loads(raw[start:end + 1])
     except Exception as e:
-        logger.error(f"Resume parse error: {e}")
-        raise HTTPException(status_code=502, detail="Could not analyze the resume. Please try again.")
+        logger.error(f"{error_label}: {e}")
+        raise HTTPException(status_code=502, detail=f"Could not {error_label}. Please try again.")
+
+
+@api.post("/resume/parse")
+async def parse_resume(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    text = await _extract_resume_text(file)
+    system = "You extract structured data from resumes. Respond with ONLY valid minified JSON, no prose, no code fences."
+    prompt = (
+        'From the resume text below, extract JSON with EXACTLY these keys: '
+        '"skills": array of objects {"name": string, "level": one of "beginner"|"intermediate"|"advanced"} (infer level, default "intermediate"), '
+        '"experience": {"projects": string[], "internships": string[], "certifications": string[], "hackathons": string[], "work": string[]}, '
+        '"profile": {"college": string, "degree": string, "branch": string, "graduationYear": string, "github": string, "portfolio": string}. '
+        'Only include items present in the resume. Keep skills to the 12 most relevant.\n\nRESUME:\n' + text
+    )
+    data = await _llm_json(system, prompt, "analyze the resume")
     return {
         "skills": data.get("skills", []),
         "experience": data.get("experience", {}),
         "profile": data.get("profile", {}),
+    }
+
+
+@api.post("/resume/score")
+async def score_resume(file: UploadFile = File(...), careerId: Optional[str] = None, user: dict = Depends(get_current_user)):
+    text = await _extract_resume_text(file)
+    career = catalog.CAREER_BY_ID.get(careerId or user.get("targetCareer"))
+    role_name = career["name"] if career else (careerId or "the target role")
+    req_skills = ", ".join([f"{s['name']} ({s['level']})" for s in career["required_skills"]]) if career else "general skills for the role"
+    techs = ", ".join(career["technologies"]) if career else ""
+    system = "You are an expert technical recruiter and resume reviewer. Respond with ONLY valid minified JSON, no prose, no code fences."
+    prompt = (
+        f'Evaluate this student resume for the target role of "{role_name}". '
+        f'Required skills for the role: {req_skills}. Common technologies: {techs}. '
+        'Return JSON with EXACTLY these keys: '
+        '"overall": integer 0-100 (overall fit for the role), '
+        '"verdict": one short sentence summary, '
+        '"breakdown": array of {"category": string, "score": integer 0-100} for exactly these categories: '
+        '"Skills Match","Relevant Experience","Projects","Education","Formatting & Clarity","Keywords / ATS", '
+        '"matchedSkills": string[] (role skills clearly present), '
+        '"missingSkills": string[] (role skills absent or weak), '
+        '"missingKeywords": string[] (important ATS keywords to add), '
+        '"strengths": string[] (3-5 specific strengths), '
+        '"improvements": array of {"title": string, "detail": string} (4-6 concrete, actionable fixes, most impactful first). '
+        'Be specific and reference the actual resume content.\n\nRESUME:\n' + text
+    )
+    data = await _llm_json(system, prompt, "score the resume")
+    return {
+        "role": role_name,
+        "overall": data.get("overall", 0),
+        "verdict": data.get("verdict", ""),
+        "breakdown": data.get("breakdown", []),
+        "matchedSkills": data.get("matchedSkills", []),
+        "missingSkills": data.get("missingSkills", []),
+        "missingKeywords": data.get("missingKeywords", []),
+        "strengths": data.get("strengths", []),
+        "improvements": data.get("improvements", []),
     }
 
 

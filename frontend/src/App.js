@@ -23,6 +23,7 @@ import CareerExplorer from "@/pages/CareerExplorer";
 import Progress from "@/pages/Progress";
 import Profile from "@/pages/Profile";
 import Interview from "@/pages/Interview";
+import ResumeScore from "@/pages/ResumeScore";
 
 function Loader() {
   return (
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="applications" element={<Applications />} />
         <Route path="careers" element={<CareerExplorer />} />
         <Route path="interview" element={<Interview />} />
+        <Route path="resume-score" element={<ResumeScore />} />
         <Route path="progress" element={<Progress />} />
         <Route path="profile" element={<Profile />} />
       </Route>
