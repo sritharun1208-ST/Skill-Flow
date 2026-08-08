@@ -1,0 +1,106 @@
+{
+  "theme": "Light mode primary. High contrast achromatic UI base with high-energy functional orange.",
+  "brand": {
+    "name": "Skill Flow",
+    "tagline": "Turn Your Skills Into Your Career.",
+    "concept": "Personal Career GPS for students. Premium startup-level SaaS. Clean, minimal, energetic. Avoids generic LinkedIn clones. Uses 'Achromatic Deep-Neutral UI' mixed with 'Tactical Orange' for kinetic triggers."
+  },
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "DM Sans",
+    "rules": [
+      "BANNED: Inter, Roboto, Open Sans, Space Grotesk for headings.",
+      "Use 'Outfit' for all H1-H4. Apply tracking-tight for sizes > 32px to look energetic.",
+      "Use 'DM Sans' for body and dashboard data (clean, legible).",
+      "Hierarchy gap rule: Jump no more than 2 tailwind steps between heading and subheading."
+    ]
+  },
+  "colors": {
+    "primary": "#FF6B00",
+    "secondary_orange": "#FF8A3D",
+    "background": "#F8FAFC",
+    "surface": "#FFFFFF",
+    "text_primary": "#111827",
+    "text_secondary": "#6B7280",
+    "border": "#E5E7EB",
+    "success": "#16A34A",
+    "warning": "#F59E0B",
+    "error": "#DC2626",
+    "implementation": "Do not flood sections with orange. Use orange ONLY for primary CTAs, active states, icons, and progress bar fills."
+  },
+  "visual_enhancers": [
+    "Glassmorphism: Use for the floating AI assistant button and sticky header nav (backdrop-blur-xl bg-white/70 border-b border-border/40). NEVER use pure transparent backgrounds for overlays.",
+    "Borders & Shadows: Dashboard cards should have 'bg-white border border-gray-200 rounded-2xl shadow-sm'.",
+    "Hover states: Elevate interactive cards with '-translate-y-1 shadow-md transition-all duration-200'.",
+    "Avatar/Icon backgrounds: Use soft tinted orange (bg-orange-50 text-orange-600) instead of solid orange for secondary visual indicators."
+  ],
+  "components": {
+    "sidebar": "Desktop: Fixed left sidebar nav. Mobile: Converts to bottom navigation bar.",
+    "circular_progress": "Dashboard centerpiece. Build an SVG circular progress indicator using stroke-dasharray and framer-motion to animate the #FF6B00 stroke.",
+    "kanban": "Application Tracker: Light gray (#F3F4F6) column backgrounds, white draggable application cards.",
+    "floating_ai": "Bottom right fixed button. Pulse animation on hover. #FF6B00 background, opens a chat interface.",
+    "buttons": "Smooth rounded (rounded-xl) for primary CTAs. Include hover and focus states.",
+    "gamification": "Lightweight professional gamification badges for 'Proof of Skills'."
+  },
+  "grids_and_layouts": {
+    "dashboard_grid": "High Density Grid. 1-col mobile, 3-col or 4-col desktop. Use tight gaps (gap-4 or gap-6) for data correlation.",
+    "marketing_layout": "Asymmetrical structure for the 'Skill-to-Career flow' section. Large typography. Generous whitespace (py-24).",
+    "padding": "Containers with borders must have internal padding (p-6) to prevent text collision."
+  },
+  "motion_and_interactions": {
+    "libraries": "framer-motion for React micro-animations. react-fast-marquee if needed.",
+    "rules": [
+      "Animate the Skill-to-Career flow on the landing page (staggered fade-ins).",
+      "Number counters for the Career Readiness %. (framer-motion useSpring/useTransform).",
+      "Micro-animations on card hovers (scale 1.02 or slight translation).",
+      "No universal 'transition: all'. Explicitly state transition properties."
+    ]
+  },
+  "accessibility": {
+    "contrast": "Text must pass WCAG AA against its background. Do not place white text on light orange.",
+    "testing": "CRITICAL: All interactive elements and key informational elements MUST include a data-testid attribute (e.g., data-testid='login-button').",
+    "focus": "Focus states must have high contrast (focus:ring-2 focus:ring-[#FF6B00] focus:ring-offset-2)."
+  },
+  "media_and_icons": {
+    "icons": "lucide-react (Standard) or @phosphor-icons/react. Do NOT use emojis.",
+    "images": "Use realistic photos for student representations. Abstract orange flow for minimal branding."
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwbGVhcm5pbmclMjBsYXB0b3B8ZW58MHx8fHwxNzg2MTgxNzQ3fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Student focused on laptop. Ideal for Landing Page hero or Onboarding wizard.",
+      "category": "marketing_hero"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1707324148764-99647364afa3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMG9yYW5nZSUyMGdlb21ldHJpYyUyMGZsb3d8ZW58MHx8fHwxNzg2MTgxNzQ3fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract wavy orange geometry. Use sparingly as a texture/background mask for the AI Skill Gap analysis section or hero backdrop.",
+      "category": "background_texture"
+    },
+    {
+      "url": "https://images.pexels.com/photos/5212666/pexels-photo-5212666.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Virtual learning interaction. Good for 'Learning Resources' or 'Projects' section.",
+      "category": "feature_card"
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Read this file fully before starting implementation.",
+    "Create Javascript (.js or .jsx) files ONLY, NOT Typescript (.tsx).",
+    "Initialize tailwind config CSS variables in index.css. Map --primary to 25 100% 50% (#FF6B00), --background to 210 20% 98% (#F8FAFC), --card to 0 0% 100%, and --foreground to 222 47% 11%.",
+    "DO NOT output raw App.css with `text-align: center;`. Remove default React boilerplate CSS.",
+    "Prioritize UI composition using Shadcn components but override their default borders (use border-gray-200) and border-radius (rounded-2xl for cards).",
+    "Use standard semantic HTML for the marketing landing page flow (YOUR SKILLS → TARGET CAREER → SKILL GAP...).",
+    "Implement the Dashboard with a Sidebar (desktop) and Bottom Navigation (mobile).",
+    "Build the circular progress component from scratch using SVG + framer-motion if Shadcn chart is too rigid.",
+    "Include `data-testid` on ALL buttons, inputs, links, forms, and actionable items.",
+    "Add general UI/UX rules: avoid AI slop, no generic centering, add layered depth.",
+    "Install the fonts using: yarn add @fontsource/outfit @fontsource/dm-sans and import them in index.js."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "Do not converge toward generic outputs. Avoid the 'AI slop' aesthetic.",
+    "Do not use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy and soft ambient shadows.",
+    "Never use AI assistant emoji characters (🤖🧠💡) for icons. Use Phosphor or Lucide icons.",
+    "Use 2-3x more spacing than typical templates (p-6, p-8) to prevent cramped designs.",
+    "Use 'sonner' for toast notifications."
+  ]
+}
