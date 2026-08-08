@@ -64,7 +64,7 @@ export default function Onboarding() {
           graduationYear: data.profile.graduationYear || prev.graduationYear,
         }));
       }
-      toast.success("Resume imported! Review and edit the details as you go.");
+      toast.success(`Resume imported${Array.isArray(data.skills) && data.skills.length ? ` — ${data.skills.length} skills added` : ""}! Review and edit as you go.`);
     } catch (err) {
       toast.error("Couldn't read that resume. Try a PDF, DOCX or TXT file.");
     } finally {

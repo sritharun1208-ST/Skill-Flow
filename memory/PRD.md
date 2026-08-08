@@ -31,11 +31,17 @@ Landing, Auth (login/register/forgot), Onboarding wizard (5 steps), Dashboard (c
 - Testing: testing agent iteration_1 — 21/21 backend pass, all critical frontend flows pass, real Claude AI streaming verified.
 
 ## Backlog / Remaining (P1/P2)
-- P1: Password reset UI page (`/reset-password?token=`) — backend endpoint exists; add the form.
-- P2: Real Google OAuth (currently UI-only button).
 - P2: Persist AI chat history across sessions in the UI.
 - P2: Drag-and-drop polish on mobile Kanban; deadline reminders.
 - P2: Readiness score tuning / richer monthly history.
+- P2: Before real production, stop returning the reset token in the forgot-password response (currently returned for demo convenience) and send it by email instead.
+
+## Added 2026-06-08 (iteration 2)
+- **Password Reset** screen (`/reset-password?token=`) + forgot-password surfaces a demo reset link.
+- **Resume Import** in onboarding: upload PDF/DOCX/TXT → Claude extracts skills/experience/profile to auto-fill.
+- **Real Google Login** via Emergent-managed OAuth (`/api/auth/google` exchanges session_id → issues our app JWT); AuthCallback handles the redirect. Existing email/password Bearer auth unchanged.
+- **Interview Prep** (`/app/interview`): AI mock-interview mode (Claude) tailored to a selected opportunity or target career; one question at a time with scored feedback. "Practice" entry on Opportunities cards.
+- Verified: testing agent iteration_2 — 34/34 backend pass, all 4 features + regressions pass.
 
 ## Test Credentials
 - Student: arjun@skillflow.com / skillflow123

@@ -75,7 +75,7 @@ export default function Interview() {
           {selectedOpp && (
             <div className="mt-3">
               <p className="text-xs font-semibold text-[#111827] mb-1.5">Focus skills</p>
-              <div className="flex flex-wrap gap-1.5">{selectedOpp.required_skills.map((s) => <span key={s.name} className="text-xs px-2 py-0.5 rounded-md bg-orange-50 text-[#FF6B00]">{s.name}</span>)}</div>
+              <div className="flex flex-wrap gap-1.5">{(selectedOpp.required_skills || []).map((s) => <span key={s.name} className="text-xs px-2 py-0.5 rounded-md bg-orange-50 text-[#FF6B00]">{s.name}</span>)}</div>
             </div>
           )}
           <div className="mt-4 flex gap-2">
